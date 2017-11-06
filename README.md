@@ -142,10 +142,10 @@ A simple Monte Carlo significance test works along the following lines:
 5. Calculate where T_0 falls in the distribution of T_i
 
 The p-value is fraction of the T_i values that exceed the measured
-T_0 value: p = n'[ T_i >= T_0 ]'/N. Inverting this the significance
-is 1-p = n'[ T_0 > T_i ]'/N. Ensure
+T_0 value: p = n[ T_i >= T_0 ]/N. Inverting this the significance
+is 1-p = n[ T_0 > T_i ]/N. Ensure
 N is large or this will not be a very accurate representation (the
-error on the p value is sqrt'{p(1-p)/N}', which comes from the
+error on the p value is sqrt[p(1-p)/N], which comes from the
 binomial formula).
 
 It is vital that you make a *fair* measurement of the
