@@ -16,8 +16,7 @@ These scripts were written 2005-2006, tested using XSPEC v12.2.1ao running under
 
 ## Referencing the scripts
 
-If you make use of this code in your work, please do cite the following paper,
-which first used the package, and for which these scripts were originally developed.
+If you make use of this code in your work, please do cite the following paper for which these scripts were originally developed.
 
 [Hurkett, C., Vaughan S., et al. 2008, ApJ, v679, p587](http://adsabs.harvard.edu/abs/2008ApJ...679..587H)
 
