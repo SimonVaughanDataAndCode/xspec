@@ -17,7 +17,7 @@ These scripts were written 2005-2006, tested using XSPEC v12.2.1ao running under
 ## Referencing the scripts
 
 If you make use of this code in your work, please do cite the following paper,
-which first used the package, and for which sour was originally developed.
+which first used the package, and for which these scripts were originally developed.
 
 [Hurkett, C., Vaughan S., et al. 2008, ApJ, v679, p587](http://adsabs.harvard.edu/abs/2008ApJ...679..587H)
 
@@ -135,14 +135,14 @@ A simple Monte Carlo significance test works along the following lines:
 
 4. Definite loop. For each i=1,2,...,N:
 
-a. Produce a simulated data set: D_i
+   a. Produce a simulated data set: D_i
    
-b. Measure the test statistic from the simulated data: T_i
+   b. Measure the test statistic from the simulated data: T_i
 
 5. Calculate where T_0 falls in the distribution of T_i
 
 The p-value is fraction of the T_i values that exceed the measured
-T_0 value: p = n'[ T_i \ge T_0 ]'/N. Inverting this the significance
+T_0 value: p = n'[ T_i >= T_0 ]'/N. Inverting this the significance
 is 1-p = n'[ T_0 > T_i ]'/N. Ensure
 N is large or this will not be a very accurate representation (the
 error on the p value is sqrt'{p(1-p)/N}', which comes from the
