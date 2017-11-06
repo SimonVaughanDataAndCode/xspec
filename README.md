@@ -10,7 +10,7 @@ This page gives XSPEC (and shell) scripts for performing Monte Carlo tests withi
 * groupall - Bash script to run GRPPHA over all simulated spectra
 * fit.xcm - XSPEC script to fit all (grouped) simulated spectra
 
-Read the [mc.ps](mc.ps) file for my (circa 2006) explanation.
+Read the [mc.pdf](mc.pdf) file for my (circa 2006) explanation.
 
 ## Warning
 
