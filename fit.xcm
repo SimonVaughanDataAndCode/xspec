@@ -1,0 +1,289 @@
+# Fit fake spectra with the same model and
+# output results to ASCII file called 'fit_results.dat'
+# Simon Vaughan, Leicester (2006)
+#
+# Data to be fitted are called sim_<i>.fak.g
+# where <i> = 1, 2, 3, ..., nn
+#
+# Fits with two models - model 1 is simpler;
+# model 2 is more complex - and outputs the
+# fit statistic (chi-squared) for each fit
+#
+# 23/01/2006 -- v1.1 adapted for XSPEC v12
+#               changed error command syntax
+#               using only 1 error call per fit 
+# 26/01/2006 -- v1.2 added check that DOF > 1
+# 27/01/2006 -- v1.3 Moved all parameters to top of script
+#                    Added parameters for Emin/Emax
+# 31/01/2006 -- v1.4 Added routine to step through trial
+#                    values of new parameter and use value
+#                    giving min[chi^2] as first guess for fitting
+# 02/02/2006 -- v1.5 Minor improvements. Set nE=100 which
+#                    gives better results. Added check for
+#                    non-monotonicity in proc 'shakefit'.
+#                    Output F-test results for each spectrum.
+# 05/06/2006 -- v1.6 Revised 'shakefit' procedure to check for
+#                    parameters fitting hard limits and bail out
+#                    after 100 iterations (prevent infinite loop).
+#
+# WARNING: Bug in XSPEC prior to v12.2.1w gives dodgy F-test probabilities!
+# ----------------------------------------------------------
+
+# Parameters: 
+
+ set nn 10              ;#  nn   = number of simulations
+ set Emin 0.5           ;#  Emin = minimum energy to fit
+ set Emax 10.0          ;#  Emax = maximum energy to fit
+ set nE 100             ;#  nE   = number of energies to step through
+
+# ----------------------------------------------------------
+# Define a TCL procedure to find minimum element of array
+# input is 'list' output is the position of
+# the minimum value of 'list'.
+# Internally: $i is a counter
+#             $value is the value of the ith element of list
+#             $minval is the minimum value found so far
+#             $minpos is the position of current minimum
+
+  proc min { list } {
+    set n [llength $list]
+    set minpos 0
+    set minval [lindex $list 0]
+    for {set i 0} {$i < $n} {incr i} {
+      set value [lindex $list $i]
+      if {$value < $minval} {
+        set minval $value
+        set minpos $i
+      }
+    }
+    return $minpos
+  }
+
+# ----------------------------------------------------------
+# Define a TCL procedure to refine fitting results
+# by repeated use of 'error' and 'fit'
+# The main loop runs over all parameters. For each free
+# parameter perform at least one 'error' command to
+# 'shake' it out of local minima. Keep fitting the parameter
+# until 'error' does not find a new minimum.
+# Finish once all free parameters have been shaken.
+#
+# $erroout comprises nine T/F flags
+# If the first flag is TRUE then a new minimum was
+# found during the last error command
+#
+# error stopat <nn> <tol> max <max-chi> <del-chi> <par>
+
+  proc shakefit {} {
+    tclout modpar                         ;# find number of parameters
+    set nopar $xspec_tclout
+    for {set j 1} {$j <= $nopar} {incr j} {
+       tclout param $j
+       set pdel [lindex $xspec_tclout 1]   ;# get parameter delta
+       if {$pdel < 0} continue             ;# if frozen goto next param
+       set doerror 1
+       set delchi 2.706                    ;# delta-chi^2 to probe
+       set counter 0
+       while {$doerror == 1 && $counter < 100} {
+          incr counter
+          error stopat 10 0.1 max 50.0 $delchi $j
+          tclout error $j
+          set errout [lindex $xspec_tclout 2]
+          if {[string match ???T????? $errout] || [string match ????T???? $errout]} {
+            set doerror 0                ;# Hit lower/upper limits
+          }
+          if [string match F???????? $errout] {
+             set doerror 0                ;# Not found better fit
+          } else {
+             fit 100 0.01                 ;# Found better fit
+             if [string match ?T??????? $errout] {
+                set delchi [expr $delchi + 2] ;# increase if non-monotonic
+             }                            ;# End IF (?F)
+          }                               ;# End IF (F?)
+       }                                  ;# End WHILE
+    }                                     ;# End FOR
+  }                                       ;# End PROC
+
+# ----------------------------------------------------------
+
+  query no
+
+# fitting method: level/migrad
+
+  method leven
+
+# open plot device
+
+  cpd /xs
+
+# Define plotting details
+
+  setplot energy
+  setplot add
+  setplot command re x 0.4 5.0
+  setplot command re y 1e-4 0.5 
+
+# Open the file to put the results in.
+
+  set fileout [open fit_result.dat w]
+
+# ----------------------------------------------------------
+# Loop through all data from 
+  
+  for {set i 1} {$i <= $nn} {incr i} {
+
+# load the grouped spectral file 
+# called sim_<i>.fak.g (where i=1,2,...,nn)
+
+    data sim_$i.fak.g
+
+# Ignore the low/high energies - exactly as real data
+
+    ignore **-$Emin
+    ignore $Emax-**
+    ignore bad
+
+# Set up the initial null hypothesis (simple) model.
+
+    model wabs*(powerlaw) & /*
+    newpar 1  0.123324     0.01  1.0E-4  1.0E-4  10     10    
+    newpar 2  2.66865      0.01  0       0       1E+24  1E+24 
+    newpar 3  1.861259E-04 1e-6  0       0       1      1     
+
+# Check there are enough degrees of freedom to fit
+
+  tclout dof
+  set tdof [lindex $xspec_tclout 0]
+  if {$tdof < 3} {
+    puts "** Not enough degrees of freedom"
+    continue
+  }
+
+# Fit it to the model.
+
+    fit 100 0.01
+
+# Make sure there's no better minimum (using 'shakefit' procedure)
+
+    shakefit        
+
+# Get the fit statistic and DOF 
+
+    tclout stat 
+    set chi1 $xspec_tclout
+    tclout dof 
+    set dof1 [lindex $xspec_tclout 0]
+
+# Plot the final fit
+
+    setplot command la t Model 1 spectrum: $i
+    setplot command la f chi-squared $chi1 / $dof1 dof
+    plot ldata
+
+# ----------------------------------------------------------
+# ----------- INSERT BB ------------------------------------
+# add the extra component being tested for (e.g. BB)
+# using EDITMOD command to insert the new component
+#
+#    editmod wabs*(powerlaw+bb) & /*
+#    newpar 4  0.222110     0.01  0       0       1      1     
+#    newpar 5  2.634640E-06 1e-7  0       0       1      1     
+#    show
+
+# ----------- INSERT LINE AT LARGEST DELTA-CHI^2 -----------
+
+# Find lowest/highest energy data actually used
+# nchan = number of channels; E/dE = binenergy/width
+
+  tclout dof                                    
+  set nchan [expr [lindex $xspec_tclout 1] - 1]
+  tclout plot ldata x
+  set E $xspec_tclout                           
+  tclout plot ldata xerr 
+  set dE $xspec_tclout                          
+  set Ehi [expr [lindex $E $nchan] + [lindex $dE $nchan]]
+  set nchan 0
+  set Elo [expr [lindex $E $nchan] - [lindex $dE $nchan]]
+
+# Insert zero-flux line in spectral model
+
+    editmod wabs*(powerlaw+gaussian) & /*
+    newpar 4,$Elo,0.01,$Emin,$Elo,$Ehi,$Emax
+    newpar 5,0.00,0.01 0.0 0.0 1.0 1.0
+    newpar 6,0.00,1e-7 0.0 0.0 1.0 1.0
+    freeze 5                ;# Ensure line stays narrow
+
+# Step through nE energies finding chi-squared at each one
+# use logarithmic energy steps from lowest to highest energy
+# resetting model each step ('best' rather than 'current')
+
+    steppar best log 4 $Elo $Ehi $nE
+
+# put steppar output into lists
+
+    tclout steppar statistic    ;# chi-squared values
+    set chisq $xspec_tclout
+    tclout steppar 4            ;# corresponding parameter values
+    set trialE $xspec_tclout
+
+# Put line at energy that gave minimum chi-squared
+
+    set minindex [min $chisq]
+    set Epeak [lindex $trialE $minindex]
+    newpar 4,$Epeak,0.01,$Emin,$Emin,$Emax,$Emax
+    newpar 6,0.00,1e-7 0.0 0.0 1.0 1.0
+
+# Before fitting, adjust line norm at current energy
+
+    freeze 4
+    fit 100 0.01
+    thaw 4
+
+# Now fit it to the model to improve energy and norm
+
+    fit 100 0.01
+
+# Make sure there's no better minimum (using 'shakefit' procedure)
+
+    shakefit        
+
+# Get the fit statistic and DOF 
+
+    tclout stat 
+    set chi2 $xspec_tclout
+    tclout dof 
+    set dof2 [lindex $xspec_tclout 0]
+
+# Plot the final fit
+
+    setplot command la t Model 2 spectrum: $i
+    setplot command la f chi-squared $chi2 / $dof2 dof
+    plot ldata
+
+# Perform an F-test (for the hell of it!)
+
+    ftest $chi2 $dof2 $chi1 $dof1
+    tclout ftest
+    set fprob $xspec_tclout
+
+# Put the chi-square and DOF of each fit into file
+
+    puts $fileout "$i $chi1 $dof1 $chi2 $dof2 $fprob"
+
+#   Reset everything
+
+    data none
+    model none
+
+# end of loop
+
+}
+# ----------------------------------------------------------
+
+# Close the file.
+
+  close $fileout
+
+# end of script
+
+  exit

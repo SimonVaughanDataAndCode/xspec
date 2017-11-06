@@ -1,0 +1,85 @@
+#!/bin/bash
+
+# 'Bash' script to group a whole bunch of spectra
+# using GRPPHA. Input parameter is the root name of the
+# spectral files. 
+# Simon Vaughan, Leicester 2006
+#
+# Input files  <root name>_<i>.fak
+# Output files <root name>_<i>/fak.g
+#
+# v1.0 -- 09/12/2004 -- Simon Vaughan
+# v1.1 -- 23/01/2006 -- fixed bug if <root name>_<i>/fak.g
+#                       already exists.
+
+# Check command-line input
+
+if [ -z "$1"  ] ; then
+  parm1="<root filename>"
+  echo Usage: $0 $parm1 
+  exit
+else
+  root=$1
+fi
+
+# make sure FTOOLS are initialised
+
+which grppha 2> ftools.nothere > ftools.here
+if [ ! -s ftools.here ] ; then
+ echo groupall: Make sure HEAsoft is initialised
+ exit $?
+fi
+
+# Make a list of all the appropriate files
+
+rm -f file.list
+ls -1  $root\_*.fak > file.list 2> errs.list
+
+# Check if there are zero files
+
+if [ ! -s file.list ] ; then
+ echo groupall: Missing files $root
+ exit $?
+fi
+
+# Main loop: for each file...
+
+n=0
+for fname in $( more file.list ); do
+
+  let n=n+1
+
+# Set output filename
+
+  outp=$fname\.g
+
+# remove file if it's already there
+
+  if [ -e $outp ] ; then
+    rm -rf $outp
+  fi
+
+# Let user know what's happening
+
+  echo Grouping input file: $fname output file $outp 
+
+# bin spectrum (until N >= 20 ct/bin)
+
+    grppha infile=$fname outfile=$outp chatter=1 \
+     comm="group min 20 & exit" >& grppha.log
+
+# end of loop
+
+done
+
+# Delete the listing files
+
+rm -f file.list
+rm ftools.nothere
+rm ftools.here
+
+# Finished
+
+echo All Done
+exit 0
+

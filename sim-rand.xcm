@@ -1,0 +1,171 @@
+# Generate fake spectra from the model that
+# is randomised based on the original data fit
+# (with no background file)
+# Simon Vaughan, Leicester (2006)
+#
+# Two part algorithm:
+#  1. Load in data. Fit. 
+#     Loop i=1,2,3,...,nn {
+#       -  draw random parameter values from current fit
+#       -  save to ASCII file }
+#
+#  2. Loop i=1,2,3,...,nn{
+#       - Read in the ith parameter values 
+#       - set current model to these values
+#       - simulate data from this model }
+#
+#               v1.0 based on SIM.XCM
+# 23/01/2006 -- v1.1 adapted for XSPEC v12
+#                    modified FAKER procedure for v12
+#                    added SIMPARS to randomise the model
+# 24/01/2006 -- v1.2 removed "data none" command, causes errors
+#                    due to memory leak in XSPEC v12.2.1
+# 27/01/2006 -- v1.3 Moved all parameters to top of script
+#                    Added parameters for Emin/Emax
+# 25/04/2006 -- v1.4 Added line 'data none' before call to 'faker'
+#                    to make sure the channel groupings are forgotten
+#                    prior to generating the fake the spectrum. 
+
+# Parameters: 
+#  nn   = number of simulations
+#  Emin = minimum energy to fit
+#  Emax = maximum energy to fit
+
+ set nn 10
+ set Emin 0.5
+ set Emax 10.0
+
+# Open the file to put the results in.
+
+  set fileid [open sim_result.dat w]
+
+# Keep going until fit converges.
+
+  query yes
+
+# open plot device
+
+  cpd /xs
+
+# Define plotting details
+
+  setplot en
+  setplot command re x 0.4 10.0
+  setplot command re y 1e-4 0.5 
+
+# Define a procedure called FAKER which actually
+# fakes the data 
+
+  proc faker {fname Texp} {
+    fakeit none & xmmpn.rmf & xmmpn.arf & y &  & ${fname} & ${Texp} & /* 
+  }
+
+# Load the ORIGINAL dataset
+
+  data source.pha
+
+# Find the exposure time
+
+  tclout expos
+  set Texp $xspec_tclout
+
+# Ignore the low/high energies 
+
+  ignore **-$Emin
+  ignore $Emax-**
+  ignore bad
+
+# Set up the null hypothesis model.
+
+  model wabs*(powerlaw) & /*
+  newpar 1  0.123324     0.01  1.0E-4  1.0E-4  10     10    
+  newpar 2  2.66865      0.01  0       0       1E+24  1E+24 
+  newpar 3  1.861259E-04 1e-6  0       0       1      1     
+  show
+
+# run the FIT command to calculate covariance matrix
+
+  fit
+
+# plot the data
+
+  setplot command la f Original data
+  plot ld del
+
+# -----------------------------------
+# Loop through interations i = 1,2,3, ...,nn
+
+  for {set i 1} {$i <= $nn} {incr i} {
+
+# draw at random new parameter values using
+# the covariance matrix to define the distribution
+
+    tclout simpars
+
+# save the randomised parameter values into the file
+
+    puts $fileid "$xspec_tclout"
+
+# end of this loop
+
+}
+
+# Close the file.
+
+  close $fileid
+
+# -----------------------------------
+# open the list of randomised parameters
+
+  set fileid [open sim_result.dat r]
+
+# Loop through interations i = 1,2,3, ...,nn
+
+  for {set i 1} {$i <= $nn} {incr i} {
+
+# read in one set of randomised parameters from file
+
+    set parms [gets $fileid]
+    set par1 [lindex $parms 0]
+    set par2 [lindex $parms 1]
+    set par3 [lindex $parms 2]
+
+# define a new model using randomised parameters
+
+    newpar 1 $par1 
+    newpar 2 $par2 
+    newpar 3 $par3 
+
+# show the randomised model
+
+    show
+
+# remove the data (to forget channel groupings)
+
+    data none
+
+# Fake the data (parameters: filename, exposure time)
+
+    faker sim_$i\.fak $Texp
+
+# Plot the fake data 
+
+    ignore **-$Emin
+    ignore $Emax-**
+    setplot rebin 5 250
+
+    setplot command la f Simulation number: $i
+    plot ldata del
+
+# Reset everything
+
+    data none
+
+# end of this loop
+
+}
+
+# end of script
+
+exit
+

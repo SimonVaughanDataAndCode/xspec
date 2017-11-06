@@ -1,0 +1,42 @@
+# Generate N fake spectra from the same model
+# with no background file
+
+# Return TCL results for XSPEC commands.
+set xs_return_result 1
+
+# Keep going until fit converges.
+query yes
+
+# open plot device
+  cpd /xs
+
+setplot en
+
+# Define a procedure called FAKER which actually
+# fakes the data 
+proc faker {par1 par2} {
+fakeit none & xmmpn.rmf & xmmpn.arf  & y & sim & $par1 & $par2 & /* 
+}
+
+# Loop through all data
+for {set i 1} {$i < 501} {incr i} {
+
+# Set up the model.
+  model wabs*(powerlaw) & /*
+  newpar 1  0.123324     0.01  1.0E-4  1.0E-4  10     10    /*
+  newpar 2  2.66865      0.01  0       0       1E+24  1E+24 /*
+  newpar 3  1.861259E-04 1e-6  0       0       1      1     /*
+  show
+
+# Fake the data (par1=filename par2=exposure time)
+faker sim_$i\.fak 5000
+
+# Plot the fake
+  ignore **-0.3
+  ignore 10.0-**
+  setplot rebin 1000 25
+  plot ldata del
+
+# Reset everything
+  data none
+}
