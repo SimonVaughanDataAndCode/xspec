@@ -19,6 +19,8 @@ These scripts were written 2005-2006, tested using XSPEC v12.2.1ao running under
 If you make use of this code in your work, please do cite the following paper,
 which first used the package, and for which sour was originally developed.
 
+[Hurkett, C., Vaughan S., et al. 2008, ApJ, v679, p587](http://adsabs.harvard.edu/abs/2008ApJ...679..587H)
+
 ## Explanation
 
 ### Monte Carlo methods
@@ -73,7 +75,7 @@ distribution to go from an F-value (what you measure from the data) to
 a p-value (how significant it is). But we can solve the problem
 using a Monte Carlo approach.
 
-### An overview of the method}
+### An overview of the method
 
 The general idea is as follows. First you need to define exactly what
 it is you want to test. If you want a clear answer you need a clear
@@ -211,6 +213,6 @@ possible parameter space. This second condition is violated when
 testing for a line (or any other additive component) because the null
 value of one of the new parameters (normalisation) is zero, which is
 the boundary of the parameter space. 
-You should also have enough counts per bin to be able to use $\chi^2$
-properly as well.
-See Protassov et al. (2002).
+You should also have enough counts per bin to be able to use chi-square
+properly as well. (Or use direct maximum likelihood fitting.)
+See [Protassov et al. (2002)](http://adsabs.harvard.edu/abs/2002ApJ...571..545P).
